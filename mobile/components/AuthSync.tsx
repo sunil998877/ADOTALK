@@ -2,7 +2,6 @@ import { useAuthCallback } from "@/hooks/useAuth";
 import { warmUpApi } from "@/lib/axios";
 import { useEffect, useRef } from "react";
 import { useAuth, useUser } from "@clerk/clerk-expo";
-import * as Sentry from "@sentry/react-native";
 
 const MAX_SYNC_RETRIES = 3;
 
@@ -36,26 +35,15 @@ const AuthSync = () => {
         onSuccess: (data) => {
           clearRetry();
           retryCountRef.current = 0;
-          console.log("✅ User synced with backend:", data.name);
-          Sentry.logger.info(Sentry.logger.fmt`User synced with backend: ${data.name}`, {
-            userId: currentUserId,
-            userName: data.name,
-          });
+          console.log("User synced:", data.name);
         },
         onError: (error) => {
           hasSynced.current = false;
           const nextRetryCount = retryCountRef.current + 1;
           retryCountRef.current = nextRetryCount;
 
-          Sentry.logger.error("Failed to sync user with backend", {
-            userId: currentUserId,
-            error: error instanceof Error ? error.message : String(error),
-            retryCount: nextRetryCount,
-          });
-
           if (nextRetryCount <= MAX_SYNC_RETRIES && isSignedIn) {
             const delayMs = nextRetryCount * 2000;
-            console.log(`Retrying user sync in ${delayMs / 1000}s...`);
             clearRetry();
             retryTimeoutRef.current = setTimeout(() => {
               void runSync();
@@ -63,7 +51,7 @@ const AuthSync = () => {
             return;
           }
 
-          console.log("❌ User sync failed for the user:", error);
+          console.error("User sync failed:", error);
         },
       });
     };
